@@ -1,0 +1,1235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0f0f0f">
+
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Flashcards</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" referrerpolicy="no-referrer" />
+  <style>
+    :root{
+      --bg: #0b0f17;
+      --bg2: #101826;
+      --panel: rgba(17, 24, 39, 0.72);
+      --panel-strong: rgba(20, 28, 44, 0.88);
+      --border: rgba(255,255,255,0.10);
+      --text: rgba(255,255,255,0.94);
+      --muted: rgba(255,255,255,0.66);
+      --soft: rgba(255,255,255,0.08);
+      --shadow: 0 18px 60px rgba(0,0,0,0.34);
+      --forgot: #ef4444;
+      --hard: #f59e0b;
+      --easy: #22c55e;
+      --accent: #8b5cf6;
+      --radius-xl: 24px;
+      --radius-lg: 18px;
+      --radius-md: 14px;
+      --tap: 54px;
+      color-scheme: dark;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(139, 92, 246, 0.18), transparent 26%),
+        radial-gradient(circle at top right, rgba(34, 197, 94, 0.11), transparent 24%),
+        radial-gradient(circle at bottom, rgba(245, 158, 11, 0.10), transparent 22%),
+        linear-gradient(180deg, var(--bg), var(--bg2));
+      color: var(--text);
+      overflow: hidden;
+    }
+
+    button, input, textarea {
+      font: inherit;
+    }
+
+    button {
+      border: 0;
+      outline: none;
+      cursor: pointer;
+    }
+
+    .app {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .topbar {
+      height: 56px;
+      padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      background: rgba(8, 12, 20, 0.52);
+      backdrop-filter: blur(18px);
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .topbar .left,
+    .topbar .right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .icon-btn,
+    .pill-btn {
+      height: 38px;
+      border-radius: 999px;
+      padding: 0 14px;
+      color: var(--text);
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.08);
+      transition: transform 120ms ease, background 120ms ease, border-color 120ms ease, opacity 120ms ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      white-space: nowrap;
+    }
+
+    .icon-btn:active,
+    .pill-btn:active,
+    .answer-btn:active,
+    .row:active,
+    .modal-action:active {
+      transform: scale(0.97);
+    }
+
+    .pill-btn.primary {
+      background: rgba(139, 92, 246, 0.16);
+      border-color: rgba(139, 92, 246, 0.18);
+    }
+
+    .icon-btn strong {
+      font-weight: 700;
+    }
+
+    .status {
+      font-size: 12px;
+      color: var(--muted);
+      letter-spacing: 0.02em;
+    }
+
+    main {
+      flex: 1;
+      display: flex;
+      min-height: 0;
+    }
+
+    .view {
+      width: 100%;
+      height: 100%;
+      padding: 18px 16px 20px;
+      display: none;
+    }
+
+    .view.active {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .practice-shell {
+      width: min(100%, 640px);
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      align-items: stretch;
+      padding-bottom: 210px;
+    }
+
+    .card-stage {
+      perspective: 1200px;
+      width: 100%;
+    }
+
+    .flashcard {
+      position: relative;
+      width: 100%;
+      height: clamp(220px, 46dvh, 420px);
+      transform-style: preserve-3d;
+      transition: transform 220ms cubic-bezier(.2,.8,.2,1);
+      will-change: transform;
+    }
+
+    .flashcard.flipped {
+      transform: rotateY(180deg);
+    }
+
+    .face {
+      position: absolute;
+      inset: 0;
+      border-radius: var(--radius-xl);
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.04)),
+        rgba(15, 22, 35, 0.82);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(18px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 20px;
+      text-align: center;
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+    }
+
+    .face.back {
+      transform: rotateY(180deg);
+    }
+
+    .word {
+      font-size: clamp(2.5rem, 10vw, 4.6rem);
+      line-height: 0.95;
+      font-weight: 760;
+      letter-spacing: -0.05em;
+      text-wrap: balance;
+    }
+
+    .meaning {
+      font-size: clamp(2rem, 7vw, 3.2rem);
+      line-height: 1.04;
+      font-weight: 720;
+      letter-spacing: -0.04em;
+      text-wrap: balance;
+    }
+
+    .example {
+      margin-top: 16px;
+      max-width: 42ch;
+      font-size: clamp(1rem, 3.5vw, 1.2rem);
+      line-height: 1.5;
+      color: rgba(255,255,255,0.64);
+      text-wrap: balance;
+    }
+
+    .hint {
+      margin-top: 16px;
+      font-size: 12px;
+      color: rgba(255,255,255,0.42);
+      letter-spacing: 0.02em;
+    }
+
+    .answer-panel {
+      display: none;
+      gap: 10px;
+    }
+
+    .answer-panel.show {
+      display: grid;
+    }
+
+    .answer-btn {
+      min-height: 54px;
+      width: 100%;
+      border-radius: 18px;
+      font-weight: 760;
+      font-size: 1rem;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 100ms ease, filter 120ms ease, opacity 120ms ease;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.16);
+    }
+
+    .answer-btn.forgot { background: linear-gradient(180deg, #f87171, var(--forgot)); }
+    .answer-btn.hard { background: linear-gradient(180deg, #fbbf24, var(--hard)); color: #191308; }
+    .answer-btn.easy { background: linear-gradient(180deg, #4ade80, var(--easy)); color: #08130b; }
+
+    .answer-btn:focus-visible,
+    .pill-btn:focus-visible,
+    .icon-btn:focus-visible,
+    .row:focus-visible,
+    .modal-action:focus-visible,
+    .field:focus-within {
+      box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.28);
+    }
+
+    .bank-shell {
+      width: min(100%, 760px);
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      min-height: 0;
+    }
+
+    .bank-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 2px 2px 0;
+    }
+
+    .bank-title {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .bank-title h2 {
+      margin: 0;
+      font-size: 1.1rem;
+      letter-spacing: -0.02em;
+    }
+
+    .bank-title span {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .bank-list {
+      min-height: 0;
+      overflow: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding-right: 2px;
+      overscroll-behavior: contain;
+    }
+
+    .row {
+      border-radius: 18px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.08);
+      padding: 15px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      text-align: left;
+      color: var(--text);
+    }
+
+    .row .w {
+      font-weight: 720;
+      font-size: 1rem;
+      word-break: break-word;
+    }
+
+    .row .m {
+      color: rgba(255,255,255,0.66);
+      text-align: right;
+      word-break: break-word;
+      flex: 1;
+    }
+
+    .row .meta {
+      color: rgba(255,255,255,0.38);
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .row .actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .delete-btn {
+      width: 30px;
+      height: 30px;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: rgba(255,255,255,0.72);
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.08);
+      flex-shrink: 0;
+    }
+
+    .delete-btn:hover {
+      color: white;
+      background: rgba(239, 68, 68, 0.18);
+      border-color: rgba(239, 68, 68, 0.28);
+    }
+
+    .empty {
+      flex: 1;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      padding: 28px 16px;
+    }
+
+    .empty-card {
+      width: min(100%, 520px);
+      border-radius: var(--radius-xl);
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.08);
+      padding: 28px 20px;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(18px);
+    }
+
+    .empty-card h2 {
+      margin: 0 0 10px;
+      font-size: 1.55rem;
+      letter-spacing: -0.03em;
+    }
+
+    .empty-card p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+      background: rgba(5, 8, 14, 0.58);
+      backdrop-filter: blur(16px);
+    }
+
+    .modal-overlay.show {
+      display: flex;
+      animation: fadeIn 180ms ease;
+    }
+
+    .modal {
+      width: min(100%, 520px);
+      border-radius: 28px;
+      background: rgba(14, 20, 32, 0.92);
+      border: 1px solid rgba(255,255,255,0.10);
+      box-shadow: 0 28px 80px rgba(0,0,0,0.52);
+      padding: 18px;
+    }
+
+    .modal h3 {
+      margin: 0 0 2px;
+      font-size: 1.25rem;
+      letter-spacing: -0.02em;
+    }
+
+    .modal .sub {
+      margin: 0 0 16px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .field label {
+      font-size: 13px;
+      color: rgba(255,255,255,0.72);
+    }
+
+    .field input,
+    .field textarea {
+      width: 100%;
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,0.10);
+      background: rgba(255,255,255,0.06);
+      color: var(--text);
+      padding: 15px 16px;
+      outline: none;
+      resize: vertical;
+      transition: border-color 120ms ease, background 120ms ease;
+    }
+
+    .field textarea {
+      min-height: 92px;
+    }
+
+    .field input::placeholder,
+    .field textarea::placeholder {
+      color: rgba(255,255,255,0.34);
+    }
+
+    .modal-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .modal-action {
+      min-height: var(--tap);
+      border-radius: 18px;
+      font-weight: 740;
+      color: var(--text);
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .modal-action.save {
+      background: linear-gradient(180deg, rgba(139,92,246,0.98), rgba(124,58,237,0.96));
+      border-color: rgba(139,92,246,0.30);
+    }
+
+    .modal-action.cancel {
+      background: rgba(255,255,255,0.06);
+    }
+
+    .tiny {
+      font-size: 12px;
+      color: rgba(255,255,255,0.44);
+      margin-top: 10px;
+    }
+
+    .topbar .right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .group-tag {
+      display: inline-flex;
+      align-items: center;
+      height: 24px;
+      padding: 0 10px;
+      border-radius: 999px;
+      background: rgba(139, 92, 246, 0.16);
+      border: 1px solid rgba(139, 92, 246, 0.18);
+      color: rgba(255,255,255,0.82);
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .row-main {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      flex: 1;
+    }
+
+    .row-sub {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .groups-modal {
+      width: min(100%, 520px);
+    }
+
+    .groups-toolbar {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin: 14px 0 12px;
+    }
+
+    .groups-list {
+      max-height: min(42vh, 360px);
+      overflow: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding-right: 2px;
+      margin-bottom: 4px;
+    }
+
+    .group-option {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px 16px;
+      border-radius: 18px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .group-option strong {
+      font-weight: 680;
+      word-break: break-word;
+    }
+
+    .group-option span {
+      color: rgba(255,255,255,0.55);
+      font-size: 13px;
+    }
+
+    .group-option input {
+      width: 20px;
+      height: 20px;
+      accent-color: var(--accent);
+      flex-shrink: 0;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (min-width: 720px) {
+      .view { padding-left: 24px; padding-right: 24px; }
+      .practice-shell { max-width: 720px; }
+      .modal { padding: 22px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="left">
+        <button id="toggleViewBtn" class="pill-btn primary" aria-label="Switch view">Word Bank</button>
+      </div>
+      <div class="right">
+        <button id="groupFilterBtn" class="pill-btn" aria-label="Choose groups">Groups</button>
+        <button id="addWordBtn" class="pill-btn" aria-label="Add word">+ Add word</button>
+      </div>
+    </header>
+
+    <main>
+      <section id="practiceView" class="view active" aria-label="Practice mode">
+        <div class="practice-shell">
+          <div id="cardStage" class="card-stage" hidden>
+            <div id="flashcard" class="flashcard" role="button" tabindex="0" aria-label="Flashcard">
+              <div class="face front">
+                <div>
+                  <div id="frontWord" class="word">word</div>
+                  <div class="hint">Tap to flip</div>
+                </div>
+              </div>
+              <div class="face back">
+                <div>
+                  <div id="backMeaning" class="meaning">meaning</div>
+                  <div id="backExample" class="example">example sentence</div>
+                  <div class="hint">Pick a difficulty</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div id="answerPanel" class="answer-panel" hidden>
+            <button class="answer-btn forgot" data-answer="forgot">Forgot</button>
+            <button class="answer-btn hard" data-answer="hard">Hard</button>
+            <button class="answer-btn easy" data-answer="easy">Easy</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="bankView" class="view" aria-label="Word bank">
+        <div class="bank-shell">
+          <div class="bank-head">
+            <div class="bank-title">
+              <h2>Word bank</h2>
+              <span id="bankCount">0 saved words</span>
+            </div>
+          </div>
+
+          <div id="bankList" class="bank-list" tabindex="0"></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div id="modalOverlay" class="modal-overlay" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <h3 id="modalTitle">Add word</h3>
+      <p id="modalSub" class="sub">Save a new word to the queue.</p>
+
+      <form id="wordForm">
+        <div class="field">
+          <label for="wordInput">Word</label>
+          <input id="wordInput" autocomplete="off" placeholder="kirja" required />
+        </div>
+        <div class="field">
+          <label for="meaningInput">Meaning</label>
+          <input id="meaningInput" autocomplete="off" placeholder="book" required />
+        </div>
+        <div class="field">
+          <label for="groupInput">Group</label>
+          <input id="groupInput" autocomplete="off" placeholder="General" />
+        </div>
+        <div class="field">
+          <label for="exampleInput">Example sentence</label>
+          <textarea id="exampleInput" placeholder="Minä luen kirjaa"></textarea>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" id="cancelModalBtn" class="modal-action cancel">Cancel</button>
+          <button type="submit" class="modal-action save">Save</button>
+        </div>
+        <div class="tiny">Words are stored locally in this browser.</div>
+      </form>
+    </div>
+  </div>
+  <div id="groupsOverlay" class="modal-overlay" aria-hidden="true">
+    <div class="modal groups-modal" role="dialog" aria-modal="true" aria-labelledby="groupsTitle">
+      <h3 id="groupsTitle">Groups</h3>
+      <p class="sub">Choose which groups are active in practice.</p>
+
+      <div class="groups-toolbar">
+        <button type="button" id="allGroupsBtn" class="modal-action cancel">All groups</button>
+        <button type="button" id="clearGroupsBtn" class="modal-action cancel">Clear</button>
+      </div>
+
+      <div id="groupsList" class="groups-list" aria-label="Available groups"></div>
+
+      <div class="modal-actions">
+        <button type="button" id="closeGroupsBtn" class="modal-action cancel">Cancel</button>
+        <button type="button" id="saveGroupsBtn" class="modal-action save">Save</button>
+      </div>
+      <div class="tiny">Practice will use only the selected groups.</div>
+    </div>
+  </div>
+
+
+  <script>
+    const STORAGE_KEY = "flashcards_data";
+
+    const state = {
+      cards: [],
+      queue: [],
+      view: "practice",
+      flipped: false,
+      editingId: null,
+      groupMode: "all",
+      activeGroups: [],
+    };
+
+    const els = {
+      toggleViewBtn: document.getElementById("toggleViewBtn"),
+      groupFilterBtn: document.getElementById("groupFilterBtn"),
+      addWordBtn: document.getElementById("addWordBtn"),
+      practiceView: document.getElementById("practiceView"),
+      bankView: document.getElementById("bankView"),
+      cardStage: document.getElementById("cardStage"),
+      flashcard: document.getElementById("flashcard"),
+      frontWord: document.getElementById("frontWord"),
+      backMeaning: document.getElementById("backMeaning"),
+      backExample: document.getElementById("backExample"),
+      answerPanel: document.getElementById("answerPanel"),
+      bankCount: document.getElementById("bankCount"),
+      bankList: document.getElementById("bankList"),
+      modalOverlay: document.getElementById("modalOverlay"),
+      modalTitle: document.getElementById("modalTitle"),
+      modalSub: document.getElementById("modalSub"),
+      wordForm: document.getElementById("wordForm"),
+      wordInput: document.getElementById("wordInput"),
+      meaningInput: document.getElementById("meaningInput"),
+      groupInput: document.getElementById("groupInput"),
+      exampleInput: document.getElementById("exampleInput"),
+      cancelModalBtn: document.getElementById("cancelModalBtn"),
+      groupsOverlay: document.getElementById("groupsOverlay"),
+      groupsList: document.getElementById("groupsList"),
+      allGroupsBtn: document.getElementById("allGroupsBtn"),
+      clearGroupsBtn: document.getElementById("clearGroupsBtn"),
+      closeGroupsBtn: document.getElementById("closeGroupsBtn"),
+      saveGroupsBtn: document.getElementById("saveGroupsBtn"),
+    };
+
+    function uid() {
+      if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+      return "id-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 10);
+    }
+
+    function clamp(n, min, max) {
+      return Math.max(min, Math.min(max, n));
+    }
+
+    function normalizeGroup(value) {
+      const group = String(value || "").trim();
+      return group || "General";
+    }
+
+    function getAllGroups() {
+      return [...new Set(state.cards.map((card) => normalizeGroup(card.group)).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+    }
+
+    function isAllGroupsMode() {
+      return state.groupMode !== "custom";
+    }
+
+    function getActiveGroupSet() {
+      return isAllGroupsMode() ? null : new Set(state.activeGroups.map(normalizeGroup));
+    }
+
+    function isCardInActiveGroups(card) {
+      const activeSet = getActiveGroupSet();
+      if (!activeSet) return true;
+      return activeSet.has(normalizeGroup(card.group));
+    }
+
+    function getVisibleCards() {
+      return state.cards.filter(isCardInActiveGroups);
+    }
+
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) {
+          state.cards = [];
+          state.queue = [];
+          state.groupMode = "all";
+          state.activeGroups = [];
+          return;
+        }
+        const parsed = JSON.parse(raw);
+        const cards = Array.isArray(parsed) ? parsed : (parsed.cards || []);
+        state.cards = cards.map((card) => ({
+          id: String(card.id || uid()),
+          word: String(card.word || "").trim(),
+          meaning: String(card.meaning || "").trim(),
+          example: String(card.example || "").trim(),
+          group: normalizeGroup(card.group),
+          level: Number.isFinite(card.level) ? card.level : 0,
+          createdAt: Number.isFinite(card.createdAt) ? card.createdAt : Date.now(),
+        })).filter((card) => card.word && card.meaning);
+
+        const settings = Array.isArray(parsed) ? {} : (parsed.settings || {});
+        state.groupMode = settings.groupMode === "custom" ? "custom" : "all";
+        state.activeGroups = Array.isArray(settings.activeGroups)
+          ? settings.activeGroups.map(normalizeGroup)
+          : [];
+        if (state.groupMode === "custom" && !state.activeGroups.length) {
+          state.groupMode = "all";
+        }
+        state.queue = rebuildQueue();
+      } catch {
+        state.cards = [];
+        state.queue = [];
+        state.groupMode = "all";
+        state.activeGroups = [];
+      }
+    }
+
+    function saveState() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        cards: state.cards,
+        settings: {
+          groupMode: state.groupMode,
+          activeGroups: state.activeGroups,
+        },
+        savedAt: Date.now(),
+      }));
+    }
+
+    function rebuildQueue(excludeId = null) {
+      const ids = getVisibleCards()
+        .filter((card) => card.id !== excludeId)
+        .map((card) => card.id);
+      if (ids.length === 0 && excludeId) return [excludeId];
+      return ids;
+    }
+
+    function getCardById(id) {
+      return state.cards.find((card) => card.id === id) || null;
+    }
+
+    function sanitizeQueue() {
+      state.queue = state.queue.filter((id) => {
+        const card = getCardById(id);
+        return !!card && isCardInActiveGroups(card);
+      });
+    }
+
+    function currentCard() {
+      sanitizeQueue();
+      if (!state.queue.length && getVisibleCards().length) {
+        state.queue = rebuildQueue();
+      }
+      return state.queue.length ? getCardById(state.queue[0]) : null;
+    }
+
+    function spacingFor(answer, level) {
+      if (answer === "forgot") return 2;
+      if (answer === "hard") return 4 + clamp(level, 0, 2);
+      return 8 + clamp(level + Math.floor(level / 2), 0, 7);
+    }
+
+    function safeInsertIndex(queue, cardId, desiredIndex) {
+      let index = clamp(desiredIndex, 0, queue.length);
+      let lastSame = -1;
+      for (let i = 0; i < queue.length; i++) {
+        if (queue[i] === cardId) lastSame = i;
+      }
+      if (lastSame >= 0 && index <= lastSame + 1) {
+        index = lastSame + 2;
+      }
+      return clamp(index, 0, queue.length);
+    }
+
+    function updateLevels(card, answer) {
+      if (answer === "forgot") {
+        card.level = 0;
+      } else if (answer === "hard") {
+        card.level = clamp((card.level || 0) + 1, 0, 5);
+      } else if (answer === "easy") {
+        card.level = clamp((card.level || 0) + 2, 0, 5);
+      }
+    }
+
+    function renderPractice() {
+      const card = currentCard();
+      const hasCards = !!card;
+      const visibleCount = getVisibleCards().length;
+
+      els.cardStage.hidden = !hasCards;
+      els.answerPanel.hidden = !hasCards;
+      els.answerPanel.classList.toggle("show", hasCards && state.flipped);
+
+      if (!hasCards) {
+        els.flashcard.classList.remove("flipped");
+        if (state.cards.length && !visibleCount) {
+          els.frontWord.textContent = "No cards in these groups";
+          els.backMeaning.textContent = "Choose different groups";
+          els.backExample.textContent = "Tap Groups to change what appears in practice.";
+        } else {
+          els.frontWord.textContent = "Add a word";
+          els.backMeaning.textContent = "Meaning";
+          els.backExample.textContent = "Example sentence";
+        }
+        return;
+      }
+
+      els.frontWord.textContent = card.word;
+      els.backMeaning.textContent = card.meaning;
+      els.backExample.textContent = card.example || "No example added.";
+      els.flashcard.classList.toggle("flipped", state.flipped);
+    }
+
+    function renderBank() {
+      els.bankCount.textContent = `${state.cards.length} saved word${state.cards.length === 1 ? "" : "s"}`;
+      els.bankList.innerHTML = "";
+
+      const frag = document.createDocumentFragment();
+      state.cards.forEach((card) => {
+        const row = document.createElement("div");
+        row.className = "row";
+        row.setAttribute("role", "button");
+        row.setAttribute("tabindex", "0");
+        row.setAttribute("aria-label", `Edit ${card.word}`);
+        row.innerHTML = `
+          <div class="row-main">
+            <div class="w">${escapeHtml(card.word)}</div>
+            <div class="row-sub">
+              <div class="m">${escapeHtml(card.meaning)}</div>
+              <div class="group-tag">${escapeHtml(normalizeGroup(card.group))}</div>
+            </div>
+          </div>
+          <div class="actions">
+            <button type="button" class="delete-btn" aria-label="Delete ${escapeHtml(card.word)}">
+              <i class="fa-solid fa-trash-can"></i>
+            </button>
+          </div>
+        `;
+        row.addEventListener("click", (event) => {
+          if (event.target.closest(".delete-btn")) return;
+          openModal(card);
+        });
+        row.addEventListener("keydown", (event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            openModal(card);
+          }
+        });
+        row.querySelector(".delete-btn").addEventListener("click", (event) => {
+          event.stopPropagation();
+          deleteCard(card.id);
+        });
+        frag.appendChild(row);
+      });
+      els.bankList.appendChild(frag);
+    }
+
+    function renderGroupButton() {
+      if (state.groupMode !== "custom") {
+        els.groupFilterBtn.textContent = "Groups: All";
+        return;
+      }
+      const count = state.activeGroups.length;
+      els.groupFilterBtn.textContent = count ? `Groups: ${count}` : "Groups: None";
+    }
+
+    function renderApp() {
+      els.practiceView.classList.toggle("active", state.view === "practice");
+      els.bankView.classList.toggle("active", state.view === "bank");
+      els.toggleViewBtn.textContent = state.view === "practice" ? "Word Bank" : "Practice";
+      els.addWordBtn.style.display = "inline-flex";
+      renderGroupButton();
+
+      if (state.view === "practice") {
+        renderPractice();
+      } else {
+        renderBank();
+      }
+    }
+
+    function openModal(card = null) {
+      state.editingId = card ? card.id : null;
+      els.modalTitle.textContent = card ? "Edit word" : "Add word";
+      els.modalSub.textContent = card ? "Update the saved card." : "Save a new word to the queue.";
+      els.wordInput.value = card?.word || "";
+      els.meaningInput.value = card?.meaning || "";
+      els.groupInput.value = card?.group || "General";
+      els.exampleInput.value = card?.example || "";
+      els.modalOverlay.classList.add("show");
+      els.modalOverlay.setAttribute("aria-hidden", "false");
+      window.setTimeout(() => els.wordInput.focus(), 0);
+    }
+
+    function closeModal() {
+      els.modalOverlay.classList.remove("show");
+      els.modalOverlay.setAttribute("aria-hidden", "true");
+      state.editingId = null;
+      els.wordForm.reset();
+    }
+
+    function openGroupsModal() {
+      renderGroupsModal();
+      els.groupsOverlay.classList.add("show");
+      els.groupsOverlay.setAttribute("aria-hidden", "false");
+    }
+
+    function closeGroupsModal() {
+      els.groupsOverlay.classList.remove("show");
+      els.groupsOverlay.setAttribute("aria-hidden", "true");
+    }
+
+    function renderGroupsModal(selected = null) {
+      const groups = getAllGroups();
+      const selectedSet = selected ? new Set(selected) : (state.groupMode === "custom" ? new Set(state.activeGroups) : new Set(groups));
+      els.groupsList.innerHTML = "";
+
+      if (!groups.length) {
+        const empty = document.createElement("div");
+        empty.className = "group-option";
+        empty.innerHTML = `<strong>No groups yet</strong><span>Add words to create groups</span>`;
+        els.groupsList.appendChild(empty);
+        return;
+      }
+
+      groups.forEach((group) => {
+        const item = document.createElement("label");
+        item.className = "group-option";
+        item.innerHTML = `
+          <div>
+            <strong>${escapeHtml(group)}</strong>
+            <span>Group</span>
+          </div>
+          <input type="checkbox" value="${escapeHtml(group)}" ${selectedSet.has(group) ? "checked" : ""} />
+        `;
+        els.groupsList.appendChild(item);
+      });
+    }
+
+    function readSelectedGroupsFromModal() {
+      return [...els.groupsList.querySelectorAll('input[type="checkbox"]')]
+        .filter((input) => input.checked)
+        .map((input) => normalizeGroup(input.value));
+    }
+
+    function addOrUpdateCard({ word, meaning, group, example }) {
+      const cleaned = {
+        word: word.trim(),
+        meaning: meaning.trim(),
+        group: normalizeGroup(group),
+        example: example.trim(),
+      };
+
+      if (!cleaned.word || !cleaned.meaning) return;
+
+      if (state.editingId) {
+        const card = getCardById(state.editingId);
+        if (card) {
+          card.word = cleaned.word;
+          card.meaning = cleaned.meaning;
+          card.group = cleaned.group;
+          card.example = cleaned.example;
+        }
+      } else {
+        const newCard = {
+          id: uid(),
+          word: cleaned.word,
+          meaning: cleaned.meaning,
+          group: cleaned.group,
+          example: cleaned.example,
+          level: 0,
+          createdAt: Date.now(),
+        };
+        state.cards.push(newCard);
+        state.queue.push(newCard.id);
+      }
+
+      saveState();
+      state.queue = state.queue.filter((id) => {
+        const card = getCardById(id);
+        return !!card && isCardInActiveGroups(card);
+      });
+      if (!state.queue.length && getVisibleCards().length) state.queue = rebuildQueue();
+      closeModal();
+      renderApp();
+    }
+
+    function answerCurrent(answer) {
+      const card = currentCard();
+      if (!card) return;
+
+      updateLevels(card, answer);
+
+      state.queue.shift();
+
+      // Keep only one scheduled copy of the current card in the queue.
+      state.queue = state.queue.filter((id) => {
+        const queuedCard = getCardById(id);
+        return !!queuedCard && queuedCard.id !== card.id && isCardInActiveGroups(queuedCard);
+      });
+
+      if (!state.queue.length) {
+        state.queue = rebuildQueue(card.id);
+      }
+
+      const desiredIndex = spacingFor(answer, card.level);
+      const insertIndex = safeInsertIndex(state.queue, card.id, Math.min(desiredIndex, state.queue.length));
+      state.queue.splice(insertIndex, 0, card.id);
+
+      state.flipped = false;
+      saveState();
+      renderApp();
+    }
+
+    function deleteCard(cardId) {
+      const card = getCardById(cardId);
+      if (!card) return;
+      const ok = window.confirm(`Delete “${card.word}”?`);
+      if (!ok) return;
+
+      state.cards = state.cards.filter((item) => item.id !== cardId);
+      state.queue = state.queue.filter((id) => id !== cardId);
+      if (!state.queue.length && state.cards.length) state.queue = rebuildQueue();
+      if (!state.cards.length) state.flipped = false;
+      saveState();
+      renderApp();
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
+    }
+
+    els.toggleViewBtn.addEventListener("click", () => {
+      state.view = state.view === "practice" ? "bank" : "practice";
+      renderApp();
+    });
+
+    els.groupFilterBtn.addEventListener("click", () => openGroupsModal());
+    els.addWordBtn.addEventListener("click", () => openModal());
+
+    els.cancelModalBtn.addEventListener("click", closeModal);
+
+    els.modalOverlay.addEventListener("click", (event) => {
+      if (event.target === els.modalOverlay) closeModal();
+    });
+
+    els.closeGroupsBtn.addEventListener("click", closeGroupsModal);
+    els.allGroupsBtn.addEventListener("click", () => {
+      state.groupMode = "all";
+      state.activeGroups = [];
+      renderGroupsModal();
+    });
+    els.clearGroupsBtn.addEventListener("click", () => {
+      state.groupMode = "custom";
+      state.activeGroups = [];
+      renderGroupsModal([]);
+    });
+    els.saveGroupsBtn.addEventListener("click", () => {
+      const groups = readSelectedGroupsFromModal();
+      if (groups.length === getAllGroups().length && groups.length > 0) {
+        state.groupMode = "all";
+        state.activeGroups = [];
+      } else {
+        state.groupMode = "custom";
+        state.activeGroups = groups;
+      }
+      saveState();
+      closeGroupsModal();
+      state.queue = rebuildQueue();
+      state.flipped = false;
+      renderApp();
+    });
+
+    els.groupsOverlay.addEventListener("click", (event) => {
+      if (event.target === els.groupsOverlay) closeGroupsModal();
+    });
+
+    els.wordForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      addOrUpdateCard({
+        word: els.wordInput.value,
+        meaning: els.meaningInput.value,
+        group: els.groupInput.value,
+        example: els.exampleInput.value,
+      });
+    });
+
+    els.flashcard.addEventListener("click", () => {
+      if (!currentCard()) return;
+      state.flipped = !state.flipped;
+      renderPractice();
+    });
+
+    els.flashcard.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        if (!currentCard()) return;
+        state.flipped = !state.flipped;
+        renderPractice();
+      }
+    });
+
+    els.answerPanel.querySelectorAll(".answer-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        answerCurrent(btn.dataset.answer);
+      });
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && els.modalOverlay.classList.contains("show")) {
+        closeModal();
+      }
+    });
+
+    loadState();
+    renderApp();
+  </script>
+
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./service-worker.js');
+  });
+}
+</script>
+
+</body>
+</html>
